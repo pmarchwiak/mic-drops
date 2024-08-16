@@ -4,8 +4,8 @@ let osc;
 // const binCount = 1024;
 const binCount = 2048; // Adjusted for voice range
 let sampleRate;
-const minFreq = 80; // Lowest frequency we're interested in (Hz)
-const maxFreq = 3000; // Highest frequency we're interested in (Hz)
+const minFreq = 60; // Lowest frequency we're interested in (Hz)
+const maxFreq = 2000; // Highest frequency we're interested in (Hz)
 
 const smoothing = 0.8;
 let primaryFreq = 0;
@@ -15,53 +15,84 @@ let emitter;
 let circles = [];
 
 // number of frames between each drop
-let framesBetweenSound = 40;
+let framesBetweenSound = 50;
 
 // threshold for a sound to register
-let volThreshold = 0.0001;
+let volThreshold = 0.01;
 // number of pixels to move per frame
 let circleSpeed = 10; 
 
 let lastFrameSound = 0;
 
 let button;
+let sensitivitySlider;
+let circleSpeedSlider;
+let micSpeedSlider;
+let lifeSlider;
+let liveForeverVal = 50;
+let sliders;
+
 let isStarted = false;
 
 function setup() {
-  createCanvas(windowWidth, windowHeight);
+  createCanvas(windowWidth - 10, windowHeight - 10);
 
   mic = new p5.AudioIn();
   mic.start();
 
   fft = new p5.FFT(smoothing, binCount);
   fft.setInput(mic);
-
-  // osc = new p5.Oscillator('sine');
-  // osc.start();
-  // osc.amp(0.5);
   
   emitter = new MicSprite(emitterSpeed);
   
   button = createButton("start / stop");
+  // button.size(100, AUTO)
   button.mouseClicked(startStop);
   button.position(10, windowHeight / 2);
+  
+  sensitivitySlider = createSlider(1, 100, 70);
+  sensitivitySlider.hide();
+  // sensitivitySlider.size(100);
+  sensitivitySlider.position(10, windowHeight - 250);
+  text("sensitivity", 10, windowHeight - 200);
+  
+  circleSpeedSlider = createSlider(1, 100, 50);
+  circleSpeedSlider.hide();
+  // circleSpeedSlider.size(100);
+  circleSpeedSlider.position(10, windowHeight - 200);
+  
+  // control how fast the mic/emitter moves
+  micSpeedSlider = createSlider(1, 10, 5);
+  micSpeedSlider.hide();
+  // micSpeedSlider.size(100);
+  micSpeedSlider.position(10, windowHeight - 150);
+  
+  // control how big the circles are when created, and thus how long they live
+  lifeSlider = createSlider(1, liveForeverVal, 30);
+  lifeSlider.hide();
+  // lifeSlider.size(100);
+  lifeSlider.position(10, windowHeight - 100);
+  
+  sliders = [sensitivitySlider, circleSpeedSlider, micSpeedSlider, lifeSlider];
   
   console.log("finished setup");
 }
 
 
 function draw() {
-
-  // osc.freq(primaryFreq);
   
   background('white');
   
   let vol = mic.getLevel();
-  if (frameCount % 20 === 0) {
+  // if (frameCount % 20 === 0) {
     // console.log(`frameCount: ${frameCount}, vol: ${vol}`)
-  }
+  // }
 
-  let enoughTimePassedSinceLastSound = (frameCount - lastFrameSound) > framesBetweenSound || lastFrameSound === 0;
+  let enoughTimePassedSinceLastSound = (frameCount - lastFrameSound) > framesBetweenSound;
+  
+  let volThreshold = map(sensitivitySlider.value(), 1, 100, .0001, .000001);
+  let circleSpeed = map(circleSpeedSlider.value(), 1, 100, 1, 30);
+  let maxLife = lifeSlider.value();
   
   let isSoundDetected = vol > volThreshold && enoughTimePassedSinceLastSound;
   // Create new circle if there's a significant sound
@@ -71,39 +102,56 @@ function draw() {
     primaryFreq = findPrimaryFrequency(spectrum);
     let closestNote = Tonal.Note.fromFreq(primaryFreq);
     let freq = Tonal.Note.freq(closestNote);
-    console.log(`New sound, primaryFreq: ${primaryFreq}, closestNote: ${closestNote}, updated freq: ${freq}`);
     
-    let circleSize = map(vol, 0, 0.03, 10, 30);
-    // let circleSpeed = map(vol, 0, 0.003, 1, 2);
-    let circleColor = frequencyToColor(freq);
-    circles.push(new SoundCircle(emitter.x, emitter.height + circleSize, circleSize, circleSpeed, circleColor, freq));
-    lastFrameSound = frameCount;
+    // let circleDiam = map(vol, 0, 0.03, 10, 30);
+    let circleDiam = map(vol, volThreshold, volThreshold * 1.5, 10, maxLife, true);
+
+
+    console.log(`New sound, primaryFreq: ${primaryFreq}, closestNote: ${closestNote}, updated freq: ${freq}, vol: ${vol}, size: ${circleDiam}`);
+  
+    if (freq >= minFreq && freq <= maxFreq) {
+      let circleColor = frequencyToColor(freq);
+      circles.push(new SoundCircle(emitter.x, emitter.height + (circleDiam/2), circleDiam, circleSpeed, circleColor, freq));
+      lastFrameSound = frameCount;
+    }
   }
   
   
   if (isStarted) {
     // Update and draw emitter
+    emitter.setSpeed(micSpeedSlider.value());
     emitter.update();
     emitter.draw(isSoundDetected);
 
 
     // Update and draw circles
     for (let i = circles.length - 1; i >= 0; i--) {
-      if (circles[i].size <= 0) {
+      let c = circles[i];
+      if (c.diam <= 0) {
         circles.splice(i, 1);
       }
       else {
-        circles[i].update(circles.length);
-        circles[i].draw();
-        text(circles[i].freq, circles[i].x + 20, circles[i].y)
+        if (c.diam > maxLife) {
+          c.diam = maxLife;
+        }
+        c.speed = circleSpeed;
+        c.update(circles.length, maxLife === liveForeverVal);
+        c.draw();
+        // text(circles[i].freq, circles[i].x + 20, circles[i].y)
       }
     }
 
     // Display the primary frequency
     fill(0);
+    
+    text("we listen", 150, windowHeight - 250);
+    text("we fall", 150, windowHeight - 200);
+    text("we move", 150, windowHeight - 150);
+    text("we live", 150, windowHeight - 100);
+    
     textAlign(LEFT, TOP);
     textSize(16);
-    text(`freq: ${primaryFreq.toFixed(2)} Hz, vol: ${vol}`, 10, height - 40);
+    text(`freq: ${primaryFreq.toFixed(2)} Hz, vol: ${vol}, threshold: ${volThreshold}`, 10, height - 40);
   }
 }
 
@@ -127,6 +175,11 @@ function startStop() {
     sampleRate = getAudioContext().sampleRate;
     console.log("Sample Rate:", sampleRate);
     isStarted = true;
+    document.querySelector("h1").classList.add("fade-out");
+    sliders.forEach((slider) => {
+      slider.addClass("fade-in");
+      slider.show();
+    });
   }
   else {
     isStarted = false;
@@ -134,19 +187,50 @@ function startStop() {
   }
 }
 
-function findPrimaryFrequency(spectrum) {
-  let maxAmp = 0;
-  let minIndex = Math.floor(minFreq / (sampleRate / 2) * spectrum.length);
-  let maxIndex = Math.ceil(maxFreq / (sampleRate / 2) * spectrum.length);
+// function findPrimaryFrequency(spectrum) {
+//   let maxAmp = 0;
+//   let minIndex = Math.floor(minFreq / (sampleRate / 2) * spectrum.length);
+//   let maxIndex = Math.ceil(maxFreq / (sampleRate / 2) * spectrum.length);
   
-  for (let i = minIndex; i < maxIndex; i++) {
-    if (spectrum[i] > maxAmp) {
-      maxAmp = spectrum[i];
-      maxIndex = i;
+//   for (let i = minIndex; i < maxIndex; i++) {
+//     if (spectrum[i] > maxAmp) {
+//       maxAmp = spectrum[i];
+//       maxIndex = i;
+//     }
+//   }
+  
+//   return map(maxIndex, 0, spectrum.length, 0, sampleRate / 2);
+// }
+
+function findPrimaryFrequency(spectrum) {
+  let lowFreq = 85;
+  let highFreq = 1100;
+  let lowIndex = freqToIndex(lowFreq, spectrum.length);
+  let highIndex = freqToIndex(highFreq, spectrum.length);
+  console.log(`lowIndex: ${lowIndex}, highIndex: ${highIndex}`);
+
+  let maxEnergy = 0;
+  let primary = 0;
+  for (let i = lowIndex; i <= highIndex; i++) {
+    if (spectrum[i] > maxEnergy) {
+      maxEnergy = spectrum[i];
+      console.log(`new max: ${maxEnergy}`);
+      primary = indexToFreq(i, spectrum.length);
     }
   }
-  
-  return map(maxIndex, 0, spectrum.length, 0, sampleRate / 2);
+  return primary;
+}
+
+// Utility function to convert frequency to FFT index
+function freqToIndex(freq, spectrumLength) {
+  let nyquist = sampleRate / 2;
+  return Math.round((freq / nyquist) * spectrumLength);
+}
+
+// Utility function to convert FFT index to frequency
+function indexToFreq(index, spectrumLength) {
+  let nyquist = sampleRate / 2;
+  return (index * nyquist) / spectrumLength;
 }
 
 function frequencyToColor(freq) {
@@ -159,10 +243,10 @@ function frequencyToColor(freq) {
 }
 
 class SoundCircle {
-  constructor(x, y, size, speed, col, freq) {
+  constructor(x, y, diam, speed, col, freq) {
     this.x = x;
     this.y = y;
-    this.size = size;
+    this.diam = diam;
     this.speed = speed;
     this.col = col;
     this.freq = freq;
@@ -180,7 +264,7 @@ class SoundCircle {
     setTimeout(this.osc.amp(0, 0.4), 500);
   }
 
-  update(numCircles) {
+  update(numCircles, liveForever) {
     if (this.isUp) {
       this.y -= this.speed;
     }
@@ -190,26 +274,24 @@ class SoundCircle {
     if (this.isAtTop() || this.isAtBottom()) {
       this.makeSound(numCircles);
       this.isUp = !this.isUp;
-      this.size -= 2;
+      if (!liveForever) {
+        this.diam -= 2;
+      }
     }
   }
 
   draw() {
     // noStroke();
     fill(this.col);
-    ellipse(this.x, this.y, this.size);
-  }
-
-  isOffScreen() {
-    return this.y + this.size < 0;
+    ellipse(this.x, this.y, this.diam);
   }
   
   isAtTop() {
-    return this.y - this.size < 0;
+    return this.y - (this.diam/2) < 0;
   }
   
   isAtBottom() {
-    return this.y + this.size >= height;
+    return this.y + (this.diam/2) >= height;
   }
 }
 
@@ -235,5 +317,9 @@ class MicSprite {
     
     const diam = isMakingSound ? 25 : 20;
     circle(this.x + 5, 30, diam);
+  }
+  
+  setSpeed(speed) {
+    this.speed = speed;
   }
 }
