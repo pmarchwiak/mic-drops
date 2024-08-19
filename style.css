@@ -11,7 +11,22 @@ html, body {
 button {
   font-size: 1.6rem;
   width: 22%;
-  margin-left: 5%
+  margin-left: 5%;
+    
+        position: absolute;
+    top:  40%;
+    left: 15%;
+    transform: translate(-50%,-50%);
+}
+
+button.small {
+  font-size: 1.3rem;
+  width: 10%;
+  margin-left: 5%;
+  position: absolute;
+  top:  95%;
+  left: 75%;
+  transform: translate(-50%,-50%);
 }
 
 h1 {
@@ -49,4 +64,29 @@ h1 {
 
 canvas {
   display: block;
+}
+
+#overlay {
+  position: fixed;
+  display: none; 
+  width: 90%;
+/*   height: 40%;  */
+  top: 10%;
+  left: 5%;
+  right: 5%;
+/*   bottom: 30%; */
+  background-color: rgba(236, 236, 236, 0.999); /* Black background with opacity */
+  z-index: 2; /* Specify a stack order in case you're using a different order for other elements */
+  cursor: pointer; /* Add a pointer on hover */
+}
+
+#overlay p {
+  margin-top: 5%;
+  margin-right: 5%;
+  margin-left: 5%;
+}
+
+#overlay p, li {
+  margin-right: 5%;
+  margin-left: 5%;
 }

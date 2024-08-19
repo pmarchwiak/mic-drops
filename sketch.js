@@ -33,6 +33,8 @@ let liveForeverVal = 50;
 let sliders;
 
 let isStarted = false;
+let isRunning = false;
+let isInfoShowing = false;
 
 function setup() {
   createCanvas(windowWidth - 10, windowHeight - 10);
@@ -45,16 +47,16 @@ function setup() {
   
   emitter = new MicSprite(emitterSpeed);
   
-  button = createButton("start / stop");
-  // button.size(100, AUTO)
-  button.mouseClicked(startStop);
-  button.position(10, windowHeight / 2);
+  // button = createButton("start / stop");
+  // // button.size(100, AUTO)
+  // button.mouseClicked(startStop);
+  // button.position(10, windowHeight / 2);
   
   sensitivitySlider = createSlider(1, 100, 70);
   sensitivitySlider.hide();
   // sensitivitySlider.size(100);
   sensitivitySlider.position(10, windowHeight - 250);
-  text("sensitivity", 10, windowHeight - 200);
+  // text("sensitivity", 10, windowHeight - 200);
   
   circleSpeedSlider = createSlider(1, 100, 50);
   circleSpeedSlider.hide();
@@ -81,7 +83,9 @@ function setup() {
 
 function draw() {
   
-  background('white');
+  if (isStarted) {
+    drawBackground();
+  }
   
   let vol = mic.getLevel();
   // if (frameCount % 20 === 0) {
@@ -90,13 +94,13 @@ function draw() {
 
   let enoughTimePassedSinceLastSound = (frameCount - lastFrameSound) > framesBetweenSound;
   
-  let volThreshold = map(sensitivitySlider.value(), 1, 100, .0001, .000001);
+  let volThreshold = map(sensitivitySlider.value(), 1, 100, .01, .000001);
   let circleSpeed = map(circleSpeedSlider.value(), 1, 100, 1, 30);
   let maxLife = lifeSlider.value();
   
   let isSoundDetected = vol > volThreshold && enoughTimePassedSinceLastSound;
   // Create new circle if there's a significant sound
-  if (isSoundDetected && isStarted) {
+  if (isSoundDetected && isRunning) {
     let spectrum = fft.analyze();
     
     primaryFreq = findPrimaryFrequency(spectrum);
@@ -117,7 +121,7 @@ function draw() {
   }
   
   
-  if (isStarted) {
+  if (isRunning) {
     // Update and draw emitter
     emitter.setSpeed(micSpeedSlider.value());
     emitter.update();
@@ -144,14 +148,17 @@ function draw() {
     // Display the primary frequency
     fill(0);
     
-    text("we listen", 150, windowHeight - 250);
-    text("we fall", 150, windowHeight - 200);
-    text("we move", 150, windowHeight - 150);
-    text("we live", 150, windowHeight - 100);
-    
-    textAlign(LEFT, TOP);
     textSize(16);
-    text(`freq: ${primaryFreq.toFixed(2)} Hz, vol: ${vol}, threshold: ${volThreshold}`, 10, height - 40);
+    textAlign(LEFT, TOP);
+    text("we listen", 180, windowHeight - 250);
+    text("we fall", 180, windowHeight - 200);
+    text("we move", 180, windowHeight - 150);
+    text("we live", 180, windowHeight - 100);
+    
+    
+    if (isInfoShowing) {
+      text(`freq: ${primaryFreq.toFixed(2)} Hz, vol: ${vol}, threshold: ${volThreshold}`, 10, height - 40);
+    }
   }
 }
 
@@ -181,9 +188,41 @@ function startStop() {
       slider.show();
     });
   }
+
+  if (!isRunning) {
+    isRunning = true;
+  }
   else {
-    isStarted = false;
+    isRunning = false;
     circles = [];
+  }
+}
+
+function overlayInfo() {
+  if (!isInfoShowing) {
+    document.querySelector("#overlay").style.display = "block";
+  }
+  else {
+    document.querySelector("#overlay").style.display = "none";
+  }
+  isInfoShowing = !isInfoShowing;
+}
+
+let angle = 0;
+function drawBackground() {
+  // Update the angle
+  angle += 0.02;
+  
+  // Calculate the gradient colors
+  let c1 = color(150);  // Black
+  let c2 = color(map(sin(angle), -1, 1, 150, 255));  // Varying grey
+  
+  // Create the gradient
+  for (let y = 0; y < height; y++) {
+    let inter = map(y, 0, height, 0, 1);
+    let c = lerpColor(c1, c2, inter);
+    stroke(c);
+    line(0, y, width, y);
   }
 }
 
