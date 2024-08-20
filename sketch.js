@@ -198,7 +198,9 @@ function startStop() {
   }
 }
 
-function overlayInfo() {
+// toggle the overlay when the info button is clicked
+function toggleOverlay() {
+  console.log(`isInfoShowing: ${isInfoShowing}`);
   if (!isInfoShowing) {
     document.querySelector("#overlay").style.display = "block";
   }
@@ -206,6 +208,13 @@ function overlayInfo() {
     document.querySelector("#overlay").style.display = "none";
   }
   isInfoShowing = !isInfoShowing;
+}
+
+// 
+function closeOverlay(event) {
+  if (event.target.nodeName.toLowerCase() !== "a") {
+    toggleOverlay();
+  }
 }
 
 let angle = 0;

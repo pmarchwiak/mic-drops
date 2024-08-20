@@ -17,13 +17,14 @@
   <body>
     <main>
       <div>
-        <button onclick="startStop()">start / stop</button>
+        <button onclick="startStop()">start + stop</button>
         <h1>mic drops</h1>
-        <button onclick="overlayInfo()" class="small">info</button>
-        <div id="overlay">
+        <button onclick="toggleOverlay()" id="info">info</button>
+        <div id="overlay" onclick="closeOverlay(event)">
+          <span>✕</span>
           <p>mic drops is a musical toy.</p>
           <p>
-            talk to it, sing to it, beep at - it will respond.
+            talk to it, sing to it, beep at it - it will respond.
           </p>
           <p>
             notes:</p>
